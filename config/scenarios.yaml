@@ -1,0 +1,74 @@
+# PAPH 仿真实验配置文件
+# 遵循“验证场景与测试场景分离”原则（避免调参即战绩）
+
+simulation:
+  dt_sim: 0.5            # 物理微步长 (秒)，用于精细统计中断时长、切换确认与步内触发
+  dt_plan: 5.0           # 规划周期 Δt (秒)
+  horizon_H: 18          # 预测窗口步数 H (H * Δt = 90 s)
+  max_candidates_K: 6    # 每层最多保留候选卫星数 K
+  duration_s: 900.0      # 单次仿真时长 (秒，15 分钟，覆盖多轮低轨卫星完整过顶)
+  min_elev_deg: 25.0     # 物理最低可用仰角门限 θ_min (度)
+
+constellation:
+  mode: "synthetic"      # "synthetic" (内置 Walker-Delta 低轨星座) 或 "tle" (CelesTrak SGP4)
+  tle_path: "data/starlink.tle"
+  altitude_km: 550.0
+  inclination_deg: 53.0
+  num_planes: 36
+  sats_per_plane: 24     # 共 864 颗低轨卫星（模拟高密低轨星座，中纬度单时刻可见 5-10 颗）
+  user_lat_deg: 39.9042  # 地面静止终端：北京
+  user_lon_deg: 116.4074
+  gateways:              # 地面信关站（决定星间链路跳数与出口可达性）
+    - name: "GW-North"
+      lat_deg: 40.2
+      lon_deg: 116.8
+      base_terrestrial_ms: 8.0
+    - name: "GW-East"
+      lat_deg: 31.2
+      lon_deg: 121.5
+      base_terrestrial_ms: 14.0
+    - name: "GW-West"
+      lat_deg: 34.3
+      lon_deg: 108.9
+      base_terrestrial_ms: 16.0
+
+# PAPH 核心参数（在验证场景标定后锁定，应用于测试场景）
+paph:
+  # AHP 成对比较矩阵对应顺序: [时延 D, 切换 q, 负载 L, 预测中断 Ô]
+  # 可在 core/planner.py 中自动做一致性检验 (CR < 0.1)
+  ahp_pairwise:
+    - [1.0,  2.0,  1.5,  0.5]
+    - [0.5,  1.0,  0.8,  0.33]
+    - [0.67, 1.25, 1.0,  0.4]
+    - [2.0,  3.0,  2.5,  1.0]
+  elev_margin_deg: 5.0          # 机制二·筛选层：仰角安全余量 Δθ
+  min_rem_vis_s: 15.0           # 机制二·筛选层：最短剩余可见时间下限
+  risk_kappa_load: 1.2          # 机制二·代价层：负载不确定度 σ_L 风险系数
+  risk_kappa_outage: 1.5        # 机制二·代价层：中断不确定度 σ_O 风险系数
+  chance_epsilon: 0.08          # 机制二·约束层：全窗口机会约束 ε (连续概率 >= 1 - ε)
+  confirm_delay_s: 0.5          # 机制三：Make-before-break 确认准备耗时
+  mbb_hit_s: 0.035              # 机制三：确认成功后极短切换中断 (35 ms，参考 PreHO)
+  bbm_hit_s: 0.5                # 对照：传统先断后连切换中断 (500 ms)
+  soft_trigger_sigma: 1.8       # 机制四：软触发偏差阈值 (倍 σ)
+  soft_trigger_persist: 3       # 机制四：偏差连续超限微步数
+  replan_cooldown_s: 2.0        # 机制四：触发重规划防抖冷却时间
+  ewma_alpha: 0.25              # 机制一：滚动校准 EWMA 系数
+
+# 场景划分：验证场景（调参）与测试场景（最终评估）使用不同的星历起始偏移、种子与故障序列
+scenarios:
+  validation:
+    name: "Validation Scene (Tuning)"
+    seed: 101
+    orbit_time_offset_s: 0.0
+    rain_fade_events: 4
+    load_surge_events: 5
+    link_fault_events: 4
+    pred_bias_drift: 0.08
+  test:
+    name: "Test Scene (Evaluation)"
+    seed: 2026
+    orbit_time_offset_s: 1850.0  # 不同轨道相位，确保完全不同的卫星过顶组合
+    rain_fade_events: 6
+    load_surge_events: 7
+    link_fault_events: 6
+    pred_bias_drift: 0.12

@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# Cached precomputed traces (can be regenerated via script)
+data/*.npz
+data/*.tle
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

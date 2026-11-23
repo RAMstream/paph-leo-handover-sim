@@ -1,0 +1,8 @@
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+PyYAML>=6.0
+networkx>=3.0
+# 可选：用于加载 CelesTrak 真实 TLE 星历进行 SGP4 外推
+# sgp4>=2.22
